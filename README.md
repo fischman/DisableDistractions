@@ -22,7 +22,7 @@ After installing, you'll have to enable this using: `Settings` ->
 `Accessibility` -> tap `Disable Instagram Distractions` -> enable the main
 toggle, and leave the shortcut-related disabled.  Note that
 accessibility services have a tremendous level of access, so enabling
-above will show a scary consent screen.
+per above will show a scary consent screen.
 
 ## How to install
 This isn't (yet?) available in Google's Play app store.
