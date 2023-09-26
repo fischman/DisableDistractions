@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">Disable Instagram Distractions</string>
+    <string name="accessibility_service_description">Disable Explore, Reels, and Suggested sections of Instagram</string>
+</resources>
