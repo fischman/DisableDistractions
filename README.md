@@ -13,7 +13,7 @@ view. When scrolling the main feed and reaching `Suggested Posts` a fake
 top.
 
 ## How it works
-This "app" registers an Android Accessibility Service that watches
+This "app" registers an [Android Accessibility Service](https://developer.android.com/guide/topics/ui/accessibility/service) that watches
 actions taken in the Instagram app and perform the back or up swipes
 depending on what it sees. There's no user interface or activity for
 this app itself, it's purely a background process.
