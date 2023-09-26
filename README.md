@@ -21,3 +21,10 @@ this app itself, it's purely a background process.
 After installing, you'll have to enable this using: `Settings` ->
 `Accessibility` -> tap `Disable Instagram Distractions` -> enable the main
 toggle, and leave the shortcut-related disabled.
+
+## How to install
+This isn't (yet?) available in Google's Play app store.
+
+Either build using Android Studio (or gradle) from source, or download
+the latest [release](https://github.com/fischman/NoExplore/releases) APK and install via adb or your side-loading
+mechanism of choice.
