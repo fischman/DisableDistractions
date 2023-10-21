@@ -21,18 +21,24 @@ public class NoExploreService extends AccessibilityService {
     public NoExploreService() {}
 
     private String emptyIfNull(CharSequence s) {  return s != null ? s.toString() : ""; }
-    private boolean containsRecursively(AccessibilityNodeInfo node, String needle) {
-        if (node == null) return false;
+
+    // Returns the top of the rect of the first-encountered descendant of |node| that contains
+    // |needle|, or -1 if no match.
+    private int containsRecursively(AccessibilityNodeInfo node, String needle) {
+        if (node == null) return -1;
         if (emptyIfNull(node.getText()).contains(needle) ||
             emptyIfNull(node.getHintText()).contains(needle) ||
             emptyIfNull(node.getTooltipText()).contains(needle)) {
-            return true;
+            Rect r = new Rect();
+            node.getBoundsInScreen(r);
+            return r.top;
         }
         int count = node.getChildCount();
         for (int i = 0; i < count; ++i) {
-            if (containsRecursively(node.getChild(i), needle)) return true;
+            int found = containsRecursively(node.getChild(i), needle);
+            if (found >= 0) return found;
         }
-        return false;
+        return -1;
     }
 
     // Handy for debugging.
@@ -69,9 +75,9 @@ public class NoExploreService extends AccessibilityService {
         if (eventType != AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED) return;
         AccessibilityNodeInfo source = event.getSource();
         if (source == null) { return; }
-        if (source.getActionList().stream().filter(
-                a -> a.getId() == AccessibilityNodeInfo.AccessibilityAction.ACTION_SCROLL_FORWARD.getId()).count() == 0) return;
-        if (containsRecursively(source, "Suggested Posts")) {
+        // Arbitrary choice of "1000" below, but useful to prevent unusability of the app if there
+        // are no new posts so "Suggested Posts" shows up at the top of the feed.
+        if (containsRecursively(source, "Suggested Posts") > 1000) {
             lastEventTime = eventTime;
             if (DEBUG) emit("UP because saw Suggested Posts in source, which follows after source: " + source);
             if (DEBUG) dumpRecursively(source);
