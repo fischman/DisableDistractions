@@ -43,3 +43,4 @@ In Android Studio:
 - Build -> Generate Signed Bundle/APK
 - Tap next until can select build flavor and select only `release`
 - APK is generated at `./app/release/app-release.apk`
+- Create GitHub release with: `command gh release create v0.<N> --notes "<NOTES>" ./app/release/app-release.apk`
