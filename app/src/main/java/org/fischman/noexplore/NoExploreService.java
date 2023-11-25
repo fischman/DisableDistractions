@@ -1,12 +1,15 @@
 package org.fischman.noexplore;
 
 import android.accessibilityservice.AccessibilityService;
+import android.accessibilityservice.AccessibilityServiceInfo;
 import android.accessibilityservice.GestureDescription;
 import android.graphics.Path;
 import android.graphics.Rect;
 import android.util.Log;
 import android.view.accessibility.AccessibilityEvent;
 import android.view.accessibility.AccessibilityNodeInfo;
+
+import java.util.List;
 
 public class NoExploreService extends AccessibilityService {
     private final boolean DEBUG = false;
@@ -22,45 +25,32 @@ public class NoExploreService extends AccessibilityService {
 
     public NoExploreService() {}
 
+    @Override
+    public void onServiceConnected() {
+        super.onServiceConnected();
+        AccessibilityServiceInfo info = getServiceInfo();
+        if (info == null) {
+            Log.e("AMI", "getServiceInfo() returned null!");
+            return;
+        }
+        info.flags |= AccessibilityServiceInfo.FLAG_REPORT_VIEW_IDS;
+        setServiceInfo(info);
+    }
+
     private static String emptyIfNull(CharSequence s) {  return s != null ? s.toString() : ""; }
-
-    private static Boolean containsAny(CharSequence haystack, String[] needles) {
-        String haystackString = emptyIfNull(haystack);
-        for (String needle: needles) {
-            if (haystackString.contains(needle)) return true;
-        }
-        return false;
-    }
-
-    // Returns the first-encountered descendant of |node| that contains
-    // any member of |needles|, or null if no match.
-    private AccessibilityNodeInfo containsRecursively(AccessibilityNodeInfo node, String[] needles) {
-        if (node == null) return null;
-        if (containsAny(node.getText(), needles) ||
-            containsAny(node.getHintText(), needles) ||
-            containsAny(node.getTooltipText(), needles)) {
-            return node;
-        }
-        int count = node.getChildCount();
-        for (int i = 0; i < count; ++i) {
-            AccessibilityNodeInfo found = containsRecursively(node.getChild(i), needles);
-            if (found != null) return found;
-        }
-        return null;
-    }
 
     // Handy for debugging.
     private void dumpRecursively(AccessibilityNodeInfo node) {
+        dumpRecursively("", node);
+    }
+    private void dumpRecursively(String prefix, AccessibilityNodeInfo node) {
         if (!DEBUG || node == null) return;
-        emit(node.getText() + " - " + node.getHintText() + " - " + node.getTooltipText());
+        emit(prefix + node.getText() + " - " + node.getHintText() + " - " + node.getTooltipText() + " - " + node.getViewIdResourceName());
         int count = node.getChildCount();
         for (int i = 0; i < count; ++i) {
-            dumpRecursively(node.getChild(i));
+            dumpRecursively(prefix + "  ", node.getChild(i));
         }
     }
-
-    private static final String[] suggestedInstagram = {"Suggested Posts", "Suggested for you"};
-    private static final String[] mapsExplore = {"Latest in "};
 
     @Override
     public void onAccessibilityEvent(AccessibilityEvent event) {
@@ -81,64 +71,83 @@ public class NoExploreService extends AccessibilityService {
         }
     }
 
+    private AccessibilityNodeInfo firstDescendant(AccessibilityNodeInfo source, String viewID) {
+        List<AccessibilityNodeInfo> candidates = source.findAccessibilityNodeInfosByViewId(viewID);
+        if (candidates.isEmpty()) return null;
+        if (candidates.size() > 1 && DEBUG)
+            emit("Multiple descendants with view ID " + viewID + ": " + candidates);
+        AccessibilityNodeInfo found = candidates.iterator().next();
+        if (!found.isVisibleToUser()) return null;
+        return found;
+    }
+
     private void onMapsEvent(AccessibilityEvent event) {
         long eventTime = event.getEventTime();
         int eventType = event.getEventType();
         if (eventType != AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED) return;
         AccessibilityNodeInfo source = event.getSource();
         if (source == null) { return; }
-        AccessibilityNodeInfo found = containsRecursively(source, mapsExplore);
+        AccessibilityNodeInfo found = firstDescendant(source, "com.google.android.apps.maps:id/explore_tab_home_title_card");
         if (found == null) return;
         Rect r = new Rect();
         found.getBoundsInScreen(r);
         // Don't process the view until it's popped up enough for drag-down to be meaningful.
         if (r.top > 2000) return;
+        // Don't process the view if its bounds don't make sense (e.g. overlapping notification bar).
+        if (r.top < 10) return;
 
         lastEventTime = eventTime;
         Path path = new Path();
-        path.moveTo(r.left, r.top+5);
-        path.lineTo(r.left, r.top+200);
+        path.moveTo((r.left+r.right)/2, r.top+5);
+        path.lineTo((r.left+r.right)/2, r.top+200);
         GestureDescription gesture = new GestureDescription.Builder()
-                .addStroke(new GestureDescription.StrokeDescription(path, 0, 10))
+                .addStroke(new GestureDescription.StrokeDescription(path, 0, 1))
                 .build();
         Boolean dispatched = dispatchGesture(gesture, new GestureResultCallback() {
             @Override
-            public void onCompleted(GestureDescription gestureDescription) { Log.e("AMI", "Gesture completed"); }
+            public void onCompleted(GestureDescription gestureDescription) { emit("Gesture completed"); }
             @Override
-            public void onCancelled(GestureDescription gestureDescription) { Log.e("AMI", "Gesture cancelled"); }
+            public void onCancelled(GestureDescription gestureDescription) { emit("Gesture cancelled"); }
         }, null);
         emit("Dispatch gesture for maps: " + dispatched);
-        if (DEBUG) emit("Gesture because saw maps \"Latest in\" in source, which follows after source: " + source);
-        if (DEBUG) dumpRecursively(source);
+        if (DEBUG) {
+            emit("Gesture because saw maps \"Latest in\" in source, which follows after source: " + source);
+            dumpRecursively(source);
+        }
     }
 
     private void onInstagramEvent(AccessibilityEvent event) {
         long eventTime = event.getEventTime();
         int eventType = event.getEventType();
+
         // TYPE_VIEW_SELECTED is delivered a bit faster than TYPE_VIEW_CLICK so use that, but also
         // is delivered multiple times, hence the eventTime-based throttling.
         if (eventType == AccessibilityEvent.TYPE_VIEW_SELECTED) {
-            String description = emptyIfNull(event.getContentDescription());
-            if ("Search and explore".equals(description) || "Reels".equals(description)) {
+            AccessibilityNodeInfo search = firstDescendant(event.getSource(), "com.instagram.android:id/search_tab");
+            AccessibilityNodeInfo reels = firstDescendant(event.getSource(), "com.instagram.android:id/clips_tab");
+            if (search != null || reels != null) {
                 lastEventTime = eventTime;
-                if (DEBUG) emit("BACK because description is " + description);
+                if (DEBUG) emit("BACK because search or reels is not null: " + search + ", " + reels);
                 performGlobalAction(GLOBAL_ACTION_BACK);
             }
             return;
         }
+
         if (eventType != AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED) return;
         AccessibilityNodeInfo source = event.getSource();
         if (source == null) { return; }
-        // Arbitrary choice of "1000" below, but useful to prevent the app being unusable if there
-        // are no new posts so "Suggested Posts" shows up at the top of the feed.
-        AccessibilityNodeInfo found = containsRecursively(source, suggestedInstagram);
+        AccessibilityNodeInfo found = firstDescendant(source, "com.instagram.android:id/end_of_feed_demarcator_container");
         if (found == null) return;
         Rect r = new Rect();
         found.getBoundsInScreen(r);
+        // Arbitrary choice of "1000" below, but useful to prevent the app being unusable if there
+        // are no new posts so "Suggested Posts" shows up at the top of the feed.
         if (r.top > 1000) {
             lastEventTime = eventTime;
-            if (DEBUG) emit("UP because saw Suggested Posts in source, which follows after source: " + source);
-            if (DEBUG) dumpRecursively(source);
+            if (DEBUG) {
+                emit("UP because saw Suggested Posts in source at " + r + ", which follows after source: " + source);
+                dumpRecursively(source);
+            }
             performGlobalAction(GESTURE_SWIPE_UP);
         }
     }
