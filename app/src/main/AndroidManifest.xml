@@ -10,8 +10,7 @@
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:theme="@style/Theme.NoExplore"
-        tools:targetApi="31">
+        tools:targetApi="34">
         <service
             android:name=".NoExploreService"
             android:enabled="true"

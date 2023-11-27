@@ -14,9 +14,8 @@ manual action anymore.
 ## What it does
 When the `Reels` or `Explore and search` icons in the app's home view are
 tapped, a fake "back" swipe will be performed to go back to the home
-view. When scrolling the main feed and reaching `Suggested Posts` a fake
-"up" swipe will be performed, refreshing the feed and jumping to its
-top.
+view. When scrolling the main feed and reaching `Suggested Posts` an
+obscuring view will hide the rest of the feed below that header.
 
 ## How it works
 This "app" registers an [Android Accessibility Service](https://developer.android.com/guide/topics/ui/accessibility/service) that watches
