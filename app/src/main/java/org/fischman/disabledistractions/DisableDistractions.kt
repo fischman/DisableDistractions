@@ -5,10 +5,13 @@ import android.accessibilityservice.AccessibilityServiceInfo
 import android.accessibilityservice.GestureDescription
 import android.accessibilityservice.GestureDescription.StrokeDescription
 import android.annotation.SuppressLint
+import android.app.Activity
+import android.content.Intent
 import android.graphics.Color
 import android.graphics.Path
 import android.graphics.PixelFormat
 import android.graphics.Rect
+import android.provider.Settings
 import android.util.Log
 import android.view.Gravity
 import android.view.View
@@ -18,6 +21,15 @@ import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
 import android.widget.LinearLayout
 import android.widget.TextView
+
+
+class DisableDistractionsActivity : Activity() {
+    override fun onResume() {
+        super.onResume()
+        val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
+        startActivityForResult(intent, 0)
+    }
+}
 
 class DisableDistractionsService : AccessibilityService() {
     private val debug = false
