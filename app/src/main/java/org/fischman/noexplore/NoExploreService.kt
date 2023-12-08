@@ -20,7 +20,7 @@ import android.widget.LinearLayout
 import android.widget.TextView
 
 class NoExploreService : AccessibilityService() {
-    private val debug = true
+    private val debug = false
     private fun emit(msg: String) {
         if (debug) Log.e("AMI", msg)
     }
@@ -30,6 +30,7 @@ class NoExploreService : AccessibilityService() {
     // that also slows down the first action instead of only subsequent ones.
     private val lastEventTime: MutableMap<Int, Long> = HashMap()
     private var obscuringView: TextView? = null
+
     @SuppressLint("SetTextI18n")
     public override fun onServiceConnected() {
         super.onServiceConnected()
@@ -72,8 +73,9 @@ class NoExploreService : AccessibilityService() {
 
     override fun onAccessibilityEvent(event: AccessibilityEvent) {
         if (event.packageName == null) {
-            if (event.eventType == AccessibilityEvent.TYPE_WINDOWS_CHANGED &&
-                event.windowChanges and AccessibilityEvent.WINDOWS_CHANGE_ACTIVE != 0
+            if ((event.eventType == AccessibilityEvent.TYPE_WINDOWS_CHANGED) &&
+                (((event.windowChanges and AccessibilityEvent.WINDOWS_CHANGE_ACTIVE) != 0) or
+                 ((event.windowChanges and AccessibilityEvent.WINDOWS_CHANGE_LAYER) != 0))
             ) {
                 emit("hideObscuringOverlay because TYPE_WINDOWS_CHANGED from null package")
                 hideObscuringOverlay()
@@ -156,7 +158,6 @@ class NoExploreService : AccessibilityService() {
         val profileTab = firstDescendant(source, "com.instagram.android:id/profile_tab") ?: return 0
         val rect = Rect()
         profileTab.getBoundsInWindow(rect)
-        emit("profileTab: $rect")
         profileTabTop = rect.top
         return profileTabTop
     }
