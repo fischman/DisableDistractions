@@ -1,5 +1,4 @@
-# NoExplore
-Disable distractions:
+# Disable distractions
 - Instagram: suppress anything that's not chat &amp; friends' posts
 - Google Maps: suppress the "Latest in &lt;your area&gt;" feature
 
@@ -33,7 +32,7 @@ per above will show a scary consent screen.
 This isn't (yet?) available in Google's Play app store.
 
 Either build using Android Studio (or gradle) from source, or download
-the latest [release](https://github.com/fischman/NoExplore/releases) APK and install via adb or your side-loading
+the latest [release](https://github.com/fischman/DisableDistractions/releases) APK and install via adb or your side-loading
 mechanism of choice.
 
 

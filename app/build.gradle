@@ -4,11 +4,11 @@ plugins {
 }
 
 android {
-    namespace 'org.fischman.noexplore'
+    namespace 'org.fischman.disabledistractions'
     compileSdk 34
 
     defaultConfig {
-        applicationId "org.fischman.noexplore"
+        applicationId "org.fischman.disabledistractions"
         minSdk 34
         targetSdk 34
         versionCode 1

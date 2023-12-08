@@ -12,7 +12,7 @@
         android:supportsRtl="true"
         tools:targetApi="34">
         <service
-            android:name=".NoExploreService"
+            android:name=".DisableDistractionsService"
             android:enabled="true"
             android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"
             android:exported="true">

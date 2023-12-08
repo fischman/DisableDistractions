@@ -1,4 +1,4 @@
-package org.fischman.noexplore
+package org.fischman.disabledistractions
 
 import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.AccessibilityServiceInfo
@@ -19,7 +19,7 @@ import android.view.accessibility.AccessibilityNodeInfo
 import android.widget.LinearLayout
 import android.widget.TextView
 
-class NoExploreService : AccessibilityService() {
+class DisableDistractionsService : AccessibilityService() {
     private val debug = false
     private fun emit(msg: String) {
         if (debug) Log.e("AMI", msg)
