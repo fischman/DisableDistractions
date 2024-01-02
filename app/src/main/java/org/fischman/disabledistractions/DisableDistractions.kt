@@ -22,7 +22,6 @@ import android.view.accessibility.AccessibilityNodeInfo
 import android.widget.LinearLayout
 import android.widget.TextView
 
-
 class DisableDistractionsActivity : Activity() {
     override fun onResume() {
         super.onResume()
@@ -62,9 +61,9 @@ class DisableDistractionsService : AccessibilityService() {
         )
         tv.gravity = Gravity.CENTER
         tv.textAlignment = View.TEXT_ALIGNMENT_CENTER
-        tv.text = "\"Suggested posts\" being obscured by " + getString(R.string.app_name)
+        tv.text = "Content being obscured by " + getString(R.string.app_name)
         tv.setTextColor(Color.YELLOW)
-        tv.setBackgroundColor(Color.BLACK)
+        tv.setBackgroundColor(0xDD shl 24)
         tv.textSize = 35f
         obscuringView = tv
     }
@@ -116,12 +115,23 @@ class DisableDistractionsService : AccessibilityService() {
         source: AccessibilityNodeInfo?,
         viewID: String
     ): AccessibilityNodeInfo? {
+        return firstDescendant(source, viewID, "")
+    }
+
+    private fun firstDescendant(
+            source: AccessibilityNodeInfo?,
+            viewID: String,
+            needle: String
+        ): AccessibilityNodeInfo? {
         if (source == null) return null
-        val candidates = source.findAccessibilityNodeInfosByViewId(viewID)
+        var candidates = source.findAccessibilityNodeInfosByViewId(viewID)
+        candidates = candidates.filter { it.isVisibleToUser }
+        if (needle != "") {
+            candidates = candidates.filter { (it.text?:"").contains(needle) }
+        }
         if (candidates.isEmpty()) return null
         if (candidates.size > 1 && debug) emit("Multiple descendants with view ID $viewID: $candidates")
-        val found = candidates.iterator().next()
-        return if (!found.isVisibleToUser) null else found
+        return candidates.iterator().next()
     }
 
     private fun onMapsEvent(event: AccessibilityEvent) {
@@ -134,7 +144,7 @@ class DisableDistractionsService : AccessibilityService() {
         )
             ?: return
         val r = Rect()
-        found.getBoundsInWindow(r)
+        found.getBoundsInScreen(r)
         // Don't process the view until it's popped up enough for drag-down to be meaningful.
         if (r.top > 2000) return
         // Don't process the view if its bounds don't make sense (e.g. overlapping notification bar).
@@ -169,12 +179,18 @@ class DisableDistractionsService : AccessibilityService() {
         }
         val profileTab = firstDescendant(source, "com.instagram.android:id/profile_tab") ?: return 0
         val rect = Rect()
-        profileTab.getBoundsInWindow(rect)
+        profileTab.getBoundsInScreen(rect)
         profileTabTop = rect.top
         return profileTabTop
     }
 
-    private val demarcator = "com.instagram.android:id/end_of_feed_demarcator_container"
+    private val instagramViewsToHide = mapOf(
+        "com.instagram.android:id/end_of_feed_demarcator_container" to "", // "Suggested for you"
+        "com.instagram.android:id/row_right_aligned_follow_button_stub" to "Follow", // "Follow" button on non-friend posts.
+        "com.instagram.android:id/netego_bloks_view" to "", // Threads inter-app up-sell.
+        "com.instagram.android:id/secondary_label" to "Sponsored", // Sponsored posts.
+        "com.instagram.android:id/netego_carousel_title" to "Suggested for you", // Suggestions for users to follow.
+    )
 
     private fun onInstagramEvent(event: AccessibilityEvent) {
         val eventTime = event.eventTime
@@ -193,16 +209,23 @@ class DisableDistractionsService : AccessibilityService() {
             return
         }
         if (eventType != AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED) return
-        val found = firstDescendant(event.source, demarcator)
-        if (found == null) {
-            hideObscuringOverlay()
-            return
+
+        dumpRecursively("SFY: ", event.source)
+
+        var minRect = Rect()
+        for ((id, needle) in instagramViewsToHide) {
+            val found = firstDescendant(event.source, id, needle) ?: continue
+            val r = Rect()
+            found.getBoundsInScreen(r)
+            emit("Obscuring view because $id is at $r")
+            if (minRect.height() == 0 || minRect.top > r.top) { minRect = r }
         }
-        val r = Rect()
-        found.getBoundsInScreen(r)
-        lastEventTime[eventType] = eventTime
-        emit("Obscuring view because $demarcator is at $r")
-        showObscuringOverlay(r.bottom, profileTabTop(event.source))
+        if (minRect.height() == 0) {
+            hideObscuringOverlay()
+        } else {
+            lastEventTime[eventType] = eventTime
+            showObscuringOverlay(minRect.top, profileTabTop(event.source))
+        }
     }
 
     private val windowManager: WindowManager get() = getSystemService(WINDOW_SERVICE) as WindowManager
@@ -218,13 +241,17 @@ class DisableDistractionsService : AccessibilityService() {
 
     private fun showObscuringOverlay(top: Int, bottom: Int) {
         @Suppress("NAME_SHADOWING") var top = top
+        if (top + 100 >= bottom) {
+            emit("Not enough to obscure between $top and $bottom, so skipping")
+            return
+        }
         emit("showObscuringOverlay: $top - $bottom")
         // Force always being able to see a strip at the top for scrolling stories back into view.
         if (top < 400) top = 400
         val wm = windowManager
         val lp = WindowManager.LayoutParams()
         lp.type = WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY
-        lp.format = PixelFormat.OPAQUE
+        lp.format = PixelFormat.TRANSLUCENT
         lp.flags = lp.flags or WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
         lp.width = ViewGroup.LayoutParams.MATCH_PARENT
         lp.height = bottom - top
