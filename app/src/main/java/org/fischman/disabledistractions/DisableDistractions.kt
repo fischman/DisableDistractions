@@ -124,9 +124,9 @@ class DisableDistractionsService : AccessibilityService() {
             needle: String
         ): AccessibilityNodeInfo? {
         if (source == null) return null
-        var candidates = source.findAccessibilityNodeInfosByViewId(viewID)
+        var candidates = if (viewID != "") source.findAccessibilityNodeInfosByViewId(viewID) else source.findAccessibilityNodeInfosByText(needle)
         candidates = candidates.filter { it.isVisibleToUser }
-        if (needle != "") {
+        if (viewID != null && needle != "") {
             candidates = candidates.filter { (it.text?:"").contains(needle) }
         }
         if (candidates.isEmpty()) return null
@@ -185,11 +185,19 @@ class DisableDistractionsService : AccessibilityService() {
     }
 
     private val instagramViewsToHide = mapOf(
+        // "Follow" button on non-friend posts.
+        "com.instagram.android:id/row_right_aligned_follow_button_stub" to "Follow",
+        "com.instagram.android:id/inline_follow_button" to "Follow",
+
+        // Threads inter-app up-sell.
+        "com.instagram.android:id/netego_bloks_view" to "",
+        "" to "Threads",
+
+        // Misc.
         "com.instagram.android:id/end_of_feed_demarcator_container" to "", // "Suggested for you"
-        "com.instagram.android:id/row_right_aligned_follow_button_stub" to "Follow", // "Follow" button on non-friend posts.
-        "com.instagram.android:id/netego_bloks_view" to "", // Threads inter-app up-sell.
         "com.instagram.android:id/secondary_label" to "Sponsored", // Sponsored posts.
         "com.instagram.android:id/netego_carousel_title" to "Suggested for you", // Suggestions for users to follow.
+        "com.instagram.android:id/clips_header_title" to "Suggested reels",
     )
 
     private fun onInstagramEvent(event: AccessibilityEvent) {
@@ -208,9 +216,18 @@ class DisableDistractionsService : AccessibilityService() {
             }
             return
         }
-        if (eventType != AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED) return
 
-        dumpRecursively("SFY: ", event.source)
+        if (eventType == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED) {
+            // Cache value since it's not computable from TYPE_VIEW_SCROLLED :/
+            profileTabTop(event.source)
+        }
+        if (eventType != AccessibilityEvent.TYPE_VIEW_SCROLLED) return
+
+        // For extra debugging, uncomment the following to dump starting at the root rather than the current node. Hasn't been useful yet.
+        // var root = event.source
+        // while (root?.parent != null) { root = root.parent }
+        // dumpRecursively("ROOT: ", root)
+        dumpRecursively("onInstagramEvent:TYPE_VIEW_SCROLLED: ", event.source)
 
         var minRect = Rect()
         for ((id, needle) in instagramViewsToHide) {

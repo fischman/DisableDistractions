@@ -6,9 +6,9 @@
 I want to use Instagram to see friends' posts & stories, and chats. I
 don't want to spend time watching strangers' Reels and posts.
 
-Similarly, I never have use for the "Latest in &lt;your area&gt;" UI sheet
-and always manually dismiss it. With this service, there's no need for
-manual action anymore.
+Similarly, I never have use for Google Maps' "Latest in &lt;your
+area&gt;" UI sheet and always manually dismiss it. With this service,
+there's no need for manual action anymore.
 
 ## What it does
 When the `Reels` or `Explore and search` icons in the app's home view are
@@ -19,14 +19,15 @@ obscuring view will hide the rest of the feed below that header.
 ## How it works
 This "app" registers an [Android Accessibility Service](https://developer.android.com/guide/topics/ui/accessibility/service) that watches
 actions taken in the relevant apps and performs a suitable gesture
-depending on what it sees. There's no user interface or activity for
-this app itself, it's purely a background process.
+depending on what it sees. There's no user interface for this app
+itself, it's purely a background process.
 
-After installing, you'll have to enable this using: `Settings` ->
-`Accessibility` -> tap `Disable Distractions` -> enable the main
-toggle, and leave the shortcut-related disabled.  Note that
-accessibility services have a tremendous level of access, so enabling
-per above will show a scary consent screen.
+After installing, tap the app's icon in the launcher to allow its
+permissions (alternatively, reachable using: `Settings` -> `Accessibility`
+-> tap `Disable Distractions` -> enable the main toggle, and leave the
+shortcut-related disabled).  Note that accessibility services have a
+tremendous level of access, so enabling per above will show a scary
+consent dialog.
 
 ## How to install
 This isn't (yet?) available in Google's Play app store.
